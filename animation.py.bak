@@ -1,0 +1,179 @@
+import time
+from rpi_ws281x import PixelStrip, Color
+import argparse
+import threading
+import math
+
+LED_COUNT = 600        # Number of LED pixels.
+# LED strip configuration:
+LED_PIN = 12         # GPIO pin connected to t6he pixels (18 uses PWM!).
+# LED_PIN = 18        # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
+LED_FREQ_HZ = 800000  # LED signal frequency in hertz (usually 800khz)
+LED_DMA = 10          # DMA channel to use for generating signal (try 10)
+LED_BRIGHTNESS = 255  # Set to 0 for darkest and 255 for brightest
+LED_INVERT = False    # True to invert the signal (when using NPN transistor level shift)
+LED_CHANNEL = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
+
+
+def theaterChase(strip, r, g, b, wait_ms=50, iterations=10):
+    """Movie theater light style chaser animation."""
+    for q in range(3):
+        for i in range(0, strip.numPixels(), 4):
+            pixel_mapper(strip, i + q, r, g, b)
+        strip.show()
+        time.sleep(wait_ms / 1000.0)
+        for i in range(0, strip.numPixels(), 4):
+            pixel_mapper(strip, i + q, 0, 0, 0)
+
+# Create and initialize automatic thread
+class theadAnimations (threading.Thread):
+    def __init__(self, threadID, name, mode, stop_event):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.mode = mode
+        self.start_time = time.time()
+        self.stop_event = stop_event
+    def run(self):
+       
+        strip = PixelStrip(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
+        # Intialize the library (must be called once before other functions).
+        strip.begin()
+
+        if self.mode == 0:
+            while not self.stop_event.is_set():
+                theaterChase(strip, 127, 127, 127)
+        if self.mode == 1:
+            while not self.stop_event.is_set(): 
+                pixel_map.effect = 2
+                pixel_map.effectoption = 1.2
+                theaterChase(strip, 127, 127, 127)
+            print ("have exited")
+
+class pixel_map:
+    def init():
+        pixel_map.zoom = 1
+        pixel_map.gap = []
+
+        pixel_map.rmap = [0] * (LED_COUNT + 1)
+        pixel_map.gmap = [0] * (LED_COUNT + 1)
+        pixel_map.bmap = [0] * (LED_COUNT + 1)
+
+        pixel_map.effect = 1
+        pixel_map.effectoption = 0
+        pixel_map.gap_effect = False
+        pixel_map.effect_list = []
+        pixel_map.gap_effect_div = 5
+        pixel_map.gap_effect_pos = 1
+        pixel_map.time_wait = 1 #second
+        pixel_map.last_time = time.perf_counter()
+        pixel_map.last_elapsed_time = 0
+        pixel_map.instruction = ""
+        pixel_map.pixel_number = LED_COUNT
+
+        pixel_map.acid = False
+        pixel_map.acidposlist = [0]
+        pixel_map.acidlen = 0
+
+        i = 1
+        loop = True
+        #for i in range (1, pixel_map.pixel_number, 1):
+        while loop == True:
+            nop = int(round(math.sin(i/3) * 4 + 5)) #NUMBER OF PIXELS FOR EACH PIXELS
+            pixelpos = pixel_map.acidposlist[i - 1] + nop
+            if pixelpos <= pixel_map.pixel_number:
+                pixel_map.acidposlist.append(pixelpos)
+                #print (pixel_map.acidposlist[i])
+            else:
+                loop = False
+                pixel_map.acidlen = len(pixel_map.acidposlist)
+                print (pixel_map.acidlen)
+            i = i + 1
+
+        if pixel_map.acid: pixel_map.pixel_number = pixel_map.acidlen
+
+pixel_map.init()
+
+def pixel_mapper(strip, index, r, g, b):
+
+    lol = 1.5
+    acid = pixel_map.acid
+
+    acidlist = pixel_map.acidposlist
+
+    if not acid: pixel_map.pixel_number = int(round(LED_COUNT/pixel_map.zoom))
+    else: pixel_map.pixel_number = pixel_map.acidlen
+
+    pixels_number = pixel_map.pixel_number
+
+    pixel_map.gap = []
+    effect = pixel_map.effect
+
+    if effect >= 1 and effect <= 7:
+        if r == 0 and g == 0 and b == 0:
+            #print("{} {} {}" .format(r, g, b))
+            if pixel_map.rmap[index] != 0 or pixel_map.gmap[index] != 0 or pixel_map.bmap[index] != 0:
+                #print (pixel_map.effectoption)
+                effect_option = float(pixel_map.effectoption)
+                if effect_option != 0:
+                    if effect == 1:
+                        r = int(round(pixel_map.rmap[index]/effect_option))
+                        g = int(round(pixel_map.gmap[index]/effect_option))
+                        b = int(round(pixel_map.bmap[index]/effect_option))
+                    elif effect == 2:
+                        r = int(round(pixel_map.rmap[index]/effect_option))
+                        g = int(round(pixel_map.gmap[index]/(effect_option*lol)))
+                        b = int(round(pixel_map.bmap[index]/(effect_option*lol)))
+                    elif effect == 3:
+                        r = int(round(pixel_map.rmap[index]/(effect_option*lol)))
+                        g = int(round(pixel_map.gmap[index]/effect_option))
+                        b = int(round(pixel_map.bmap[index]/(effect_option*lol)))
+                    elif effect == 4:
+                        r = int(round(pixel_map.rmap[index]/(effect_option*lol)))
+                        g = int(round(pixel_map.gmap[index]/(effect_option*lol)))
+                        b = int(round(pixel_map.bmap[index]/effect_option))
+                    elif effect == 5:
+                        r = int(round(pixel_map.rmap[index]/(effect_option*lol)))
+                        g = int(round(pixel_map.gmap[index]/effect_option))
+                        b = int(round(pixel_map.bmap[index]/effect_option))
+                    elif effect == 6:
+                        r = int(round(pixel_map.rmap[index]/effect_option))
+                        g = int(round(pixel_map.gmap[index]/(effect_option*lol)))
+                        b = int(round(pixel_map.bmap[index]/effect_option))
+                    elif effect == 7:
+                        r = int(round(pixel_map.rmap[index]/effect_option))
+                        g = int(round(pixel_map.gmap[index]/effect_option))
+                        b = int(round(pixel_map.bmap[index]/(effect_option*lol)))
+                    if r < 4: r = 0
+                    if g < 4: g = 0
+                    if b < 4: b = 0
+
+    pixel_map.rmap[index] = r
+    pixel_map.gmap[index] = g
+    pixel_map.bmap[index] = b
+
+    if acid == True:
+        ci = index - 1
+        #print(ci)
+        #print(pixel_map.pixel_number)
+        if ci > 0 and ci < len(acidlist):
+            nopbrut = acidlist[ci]
+            if ci == 0: starter = 1
+            else: starter = acidlist[ci - 1]
+            if nopbrut <= LED_COUNT:
+                #print ("{} {}" .format(starter, nopbrut))
+                for i in range (starter, nopbrut, 1):
+                    strip.setPixelColor(i, Color(r, g, b))
+
+    #print("{} {} {}".format(r, g, b))
+
+    else:
+
+        if pixel_map.zoom != 0: zoom = pixel_map.zoom
+
+        if zoom == 1:
+            strip.setPixelColor(index, Color(r, g, b))
+        else:
+            for i in range (index*zoom, (index+1)*zoom, 1):
+                strip.setPixelColor(i, Color(r, g, b)
+                        )
